@@ -231,6 +231,48 @@ public static class InputController
             controllers[(int)pad].SetThreshold(threshold);
     }
 
+    public static void SetSensitivity(double sensitivity,  GamePad pad = GamePad.One)
+    {
+        if (pad == GamePad.None) return;
+        if (pad == GamePad.All)
+        {
+            for (var i = 0; i < controllers.Count; i++)
+            {
+                controllers[i].SetAxisSensitivity(sensitivity);
+            }
+        }
+        else
+            controllers[(int)pad].SetAxisSensitivity(sensitivity);
+    }
+
+    public static void SetGravity(double gravity, GamePad pad = GamePad.One)
+    {
+        if (pad == GamePad.None) return;
+        if (pad == GamePad.All)
+        {
+            for (var i = 0; i < controllers.Count; i++)
+            {
+                controllers[i].SetAxisGravity(gravity);
+            }
+        }
+        else
+            controllers[(int)pad].SetAxisGravity(gravity);
+    }
+
+    public static void SetDead(double dead, GamePad pad = GamePad.One)
+    {
+        if (pad == GamePad.None) return;
+        if (pad == GamePad.All)
+        {
+            for (var i = 0; i < controllers.Count; i++)
+            {
+                controllers[i].SetAxisDead(dead);
+            }
+        }
+        else
+            controllers[(int)pad].SetAxisDead(dead);
+    }
+
     /// <summary>
     /// こいつを毎フレーム呼んでくれないと動かないぞ！！
     /// </summary>
@@ -366,18 +408,6 @@ public static class InputController
         if (pad < GamePad.All)
         {
             return controllers[(int)pad].GetButtonStayTime(button);
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    public static float GetButtonFixedStayTime(Button button, GamePad pad = GamePad.One)
-    {
-        if (pad < GamePad.All)
-        {
-            return controllers[(int)pad].GetButtonFixedStayTime(button);
         }
         else
         {
@@ -562,16 +592,6 @@ public static class InputController
             return 0;
     }
 
-    public static float GetAxisFixedStayTime(Axis axis, GamePad pad = GamePad.One)
-    {
-        if (pad < GamePad.All)
-        {
-            return controllers[(int)pad].GetAxisFixedStayTime(axis);
-        }
-        else
-            return 0;
-    }
-
     #endregion
 
 
@@ -668,6 +688,31 @@ public static class InputController
             Axes[axis].SetAxisName(name);
         }
 
+        public void SetAxisSensitivity(double sensitivity)
+        {
+            for(var i = 0;i < (int)Axis.None;i++)
+            {
+                Axes[(Axis)i].Sensitivity = sensitivity;
+            }
+        }
+
+        public void SetAxisGravity(double gravity)
+        {
+            for (var i = 0; i < Axes.Count; i++)
+            {
+                Axes[(Axis)i].Gravity = gravity;
+            }
+        }
+
+        public void SetAxisDead(double dead)
+        {
+            if (dead >= 1) return;
+            for (var i = 0; i < (int)Axis.None;i++)
+            {
+                Axes[(Axis)i].Dead = dead;
+            }
+        }
+
         #region Button関数
         public bool GetButtonDown(Button button)
         {
@@ -726,13 +771,7 @@ public static class InputController
 
             return Buttons[button].StayTime;
         }
-
-        public float GetButtonFixedStayTime(Button button)
-        {
-            if (button == Button.None) return 0;
-
-            return Buttons[button].FixedStayTime;
-        }
+        
         #endregion
 
         #region Axis関数
@@ -842,13 +881,7 @@ public static class InputController
 
             return Axes[axis].StayTime;
         }
-
-        public float GetAxisFixedStayTime(Axis axis)
-        {
-            if (axis == Axis.None) return 0;
-
-            return Axes[axis].FixedStayTime;
-        }
+        
         #endregion
 
         /// <summary>
@@ -864,7 +897,6 @@ public static class InputController
             private bool _now = false;
             public bool Enabled { get; private set; }
             public float StayTime { get; private set; }
-            public float FixedStayTime { get; private set; }
 
             public ButtonState(Button button)
             {
@@ -920,12 +952,10 @@ public static class InputController
                         if (_previous && _now)
                         {
                             StayTime += Time.deltaTime;
-                            FixedStayTime += Time.fixedDeltaTime;
                         }
                         else if(!_previous && !_now)
                         {
                             StayTime = 0;
-                            FixedStayTime = 0;
                         }
                     }
                     catch
@@ -972,9 +1002,11 @@ public static class InputController
             private float _previous;
             private float _now;
             public double Threshold;
+            public double Sensitivity = 2;
+            public double Gravity = 10;
+            public double Dead = 0.1;
             public bool Enabled { get; private set; }
             public float StayTime { get; private set; }
-            public float FixedStayTime { get; private set; }
 
             public AxisState(Axis axis)
             {
@@ -1019,6 +1051,7 @@ public static class InputController
                 Enabled = true;
             }
 
+
             public void Update()
             {
                 if (Enabled)
@@ -1033,19 +1066,42 @@ public static class InputController
                         }
                         else
                         {
-                            _now = (Input.GetKey(_positive_keycode) ? 1 : 0) + (Input.GetKey(_negative_keycode) ? -1 : 0);
+                            int key = (Input.GetKey(_positive_keycode) ? 1 : 0) + (Input.GetKey(_negative_keycode) ? -1 : 0);
+
+                            if(key == 0 || previous * key < 0)
+                            {
+                                if (Gravity > 0)
+                                {
+                                    _now += -(float)(previous * Gravity * Time.deltaTime);
+                                    if (_now * previous < 0) _now = 0;
+                                    if (Mathf.Abs(_now) <= Dead) _now = 0;
+                                }
+                                else
+                                    _now = 0;
+
+                                if (Mathf.Abs(_now) <= Dead) _now = 0;
+                            }
+                            else
+                            {
+                                if (Sensitivity > 0)
+                                {
+                                    _now += (float)(key * Sensitivity * Time.deltaTime);
+                                    if (Mathf.Abs(_now) > 1) _now = key;
+                                }
+                                else
+                                    _now = key;
+                            }
+                            
                         }
                         int now = GetAxisRow();
 
                         if(previous != 0 && previous == now)
                         {
                             StayTime += Time.deltaTime;
-                            FixedStayTime += Time.fixedDeltaTime;
                         }
                         else if(previous == 0 && now == 0)
                         {
                             StayTime = 0;
-                            FixedStayTime = 0;
                         }
 
                     }

@@ -16,6 +16,9 @@ public class TestScript : MonoBehaviour
         //GamePad.Allとかでいっぺんに指定することもできる
         //InputController.SetGameButton(InputController.GamePad.One, InputController.Button.R1, 0);
         //InputController.SetGamePads();
+
+
+        InputController.SetSensitivity(2, InputController.GamePad.All);
     }
     
     protected void Update()
@@ -36,5 +39,8 @@ public class TestScript : MonoBehaviour
         //この機能は割と気まぐれで作ったぞ！！
         if (InputController.GetAxisUp(InputController.Axis.R_Horizontal) != 0)
             Debug.Log("R_Horizontal Upped, StayTime was " + InputController.GetAxisStayTime(InputController.Axis.R_Horizontal) + " seconds");
+
+        if (InputController.GetAxisRow(InputController.Axis.R_Vertical) != 0)
+            Debug.Log(InputController.GetAxis(InputController.Axis.R_Vertical));
     }
 }
