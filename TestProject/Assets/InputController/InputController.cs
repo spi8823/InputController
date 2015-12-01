@@ -32,6 +32,8 @@ public static class InputController
 
     public static double Threshold { get; private set; }
 
+    private static int lastUpdatedFrame = -1;
+
     /// <summary>
     /// UnityのデフォルトのInputに対応させるぞ！
     /// 詳しくは関数の中身を見てくれ！！
@@ -77,6 +79,7 @@ public static class InputController
         controller.Axes[Axis.R_Vertical].SetKeyCodes(KeyCode.UpArrow, KeyCode.DownArrow);
         controller.Axes[Axis.L_Horizontal].SetKeyCodes(KeyCode.D, KeyCode.A);
         controller.Axes[Axis.L_Vertical].SetKeyCodes(KeyCode.W, KeyCode.S);
+        controller.Axes[Axis.Side].SetKeyCodes(KeyCode.E, KeyCode.Q);
 
         AddController(controller);
     }
@@ -278,6 +281,9 @@ public static class InputController
     /// </summary>
     public static void Update()
     {
+        if (lastUpdatedFrame == Time.frameCount) return;
+        lastUpdatedFrame = Time.frameCount;
+
         if (controllers == null || controllers.Count == 0) SetForKeyboard();
 
         foreach(var controller in controllers)
