@@ -79,6 +79,8 @@ public static class InputController
         controller.Axes[Axis.R_Vertical].SetKeyCodes(KeyCode.UpArrow, KeyCode.DownArrow);
         controller.Axes[Axis.L_Horizontal].SetKeyCodes(KeyCode.D, KeyCode.A);
         controller.Axes[Axis.L_Vertical].SetKeyCodes(KeyCode.W, KeyCode.S);
+        controller.Axes[Axis.Cross_Horizontal].SetKeyCodes(KeyCode.RightArrow, KeyCode.LeftArrow);
+        controller.Axes[Axis.Cross_Vertical].SetKeyCodes(KeyCode.UpArrow, KeyCode.DownArrow);
         controller.Axes[Axis.Side].SetKeyCodes(KeyCode.E, KeyCode.Q);
 
         AddController(controller);
@@ -371,6 +373,22 @@ public static class InputController
             return controllers[(int)pad].GetAnyButtonStay();
     }
 
+    public static bool GetButtonStayPeriodicly(Button button, GamePad pad = GamePad.One)
+    {
+        if (pad == GamePad.None) return false;
+        if (pad == GamePad.All)
+        {
+            bool stay = false;
+            foreach (var controller in controllers)
+            {
+                stay = stay || controller.GetButtonStayPeriodicly(button);
+            }
+            return stay;
+        }
+        else
+            return controllers[(int)pad].GetButtonStayPeriodicly(button);
+    }
+
     /// <summary>
     /// ボタンが離された瞬間だけtrueを返すぞ！！
     /// </summary>
@@ -528,6 +546,23 @@ public static class InputController
         }
         else
             return controllers[(int)pad].GetAxis(axis);
+    }
+
+    public static int GetAxisPeriodicly(Axis axis, GamePad pad = GamePad.One,  bool sum = false)
+    {
+        if (pad == GamePad.None) return 0;
+        if (pad == GamePad.All)
+        {
+            int value = 0;
+            foreach (var controller in controllers)
+            {
+                value = value + controller.GetAxisPeriodicly(axis);
+            }
+            if (!sum && Mathf.Abs(value) > 1) value = value / Mathf.Abs(value);
+            return value;
+        }
+        else
+            return controllers[(int)pad].GetAxisPeriodicly(axis);
     }
 
     public static float GetAnyAxis(bool isHorizontal, GamePad pad = GamePad.One, bool sum = false)
@@ -754,6 +789,23 @@ public static class InputController
             return stay;
         }
 
+        public bool GetButtonStayPeriodicly(Button button)
+        {
+            return Buttons[button].GetButtonStayPeriodicly();
+        }
+
+        public bool GetAnyButtonStayPeriodicly()
+        {
+            bool stay = false;
+
+            for(var i = 0;i < (int)Button.None;i++)
+            {
+                stay = stay || GetButtonStayPeriodicly((Button)i);
+            }
+
+            return stay;
+        }
+
         public bool GetButtonUp(Button button)
         {
             return Buttons[button].GetButtonUp();
@@ -855,7 +907,12 @@ public static class InputController
 
             return value;
         }
-        
+
+        public int GetAxisPeriodicly(Axis axis)
+        {
+            return Axes[axis].GetAxisPeriodicly();
+        }
+
         public int GetAxisRow(Axis axis)
         {
             return Axes[axis].GetAxisRow();
@@ -987,6 +1044,25 @@ public static class InputController
             public bool GetButtonStay()
             {
                 return _now;
+            }
+
+            public bool GetButtonStayPeriodicly()
+            {
+                var offset = 0.5;
+                var interval = 0.1;
+                if (!_previous && _now)
+                    return true;
+                else if (_now)
+                {
+                    if (StayTime < offset)
+                        return false;
+                    else if ((int)((StayTime - offset - Time.deltaTime) / interval) != (int)((StayTime - offset) / interval))
+                        return true;
+                    else
+                        return false;
+                }
+                else
+                    return false;
             }
 
             public bool GetButtonUp()
@@ -1145,6 +1221,25 @@ public static class InputController
             public float GetAxis()
             {
                 return _now;
+            }
+
+            public int GetAxisPeriodicly()
+            {
+                var offset = 0.2;
+                var interval = 0.1;
+                int p = _previous > Threshold ? 1 : (_previous < -Threshold ? -1 : 0);
+                int n = _now > Threshold ? 1 : (_now < -Threshold ? -1 : 0);
+                if (p != n)
+                    return n;
+                else
+                {
+                    if (StayTime < offset)
+                        return 0;
+                    else if ((int)((StayTime - offset - Time.deltaTime) / interval) != (int)((StayTime - offset) / interval))
+                        return n;
+                    else
+                        return 0;
+                }
             }
 
             public int GetAxisRow()
